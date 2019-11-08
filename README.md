@@ -1,2 +1,6 @@
 # Fall3_IAA
-MSA Homework at the IAA for Fall 3
+Homework for the Masters of Science in Analytics NC State Program(IAA) for Fall 3
+
+Classes include:
+- Survival Analysis
+- Machine Learning
