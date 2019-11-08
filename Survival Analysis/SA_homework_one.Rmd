@@ -1,0 +1,215 @@
+---
+title: "Survival Homework One"
+author: "Thomas Gow"
+date: "11/3/2019"
+output: html_document
+---
+## Survival Homework
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+Importing Libraries
+```{r Libraries, echo=FALSE}
+library(survival)
+library(survminer)
+library(haven)
+library(dplyr)
+```
+
+
+
+```{r Data, echo=FALSE}
+hurricane <- haven::read_sas("/Users/thomasgow/Documents/IAA/Survival Analysis/SA Data/hurricane.sas7bdat")
+
+small <- select(hurricane, age, reason, hour, survive)
+```
+
+```{r Pumps Survived}
+
+# 454 0s (Not Survived)
+no_survived <- sum(hurricane$survive == 0) 
+
+# 316 1s (Surived)
+survived <- sum(hurricane$survive == 1)
+
+# 41.04% Proportion of pumps surived
+prct_surv <- (survived/(nrow(hurricane)))
+
+```
+
+
+```{r Pumps Survived Flood}
+# Subsetting Flood
+flood_reason <- hurricane[ which(hurricane$reason == 1),]
+
+# Percent Surived
+# 115 0s (Not Survived)
+no_survived_flood <- sum(flood_reason$survive == 0) 
+
+# 7.12087 Average Failure Time
+avg_fail_flood_age_flood <- mean(flood_reason$age)
+
+
+```
+
+```{r Motor Survived Motor}
+# Subsetting Motor
+motor_reason <- hurricane[ which(hurricane$reason == 2),]
+
+# 112 0s (Not Survived)
+no_survived_motor <- sum(motor_reason$survive == 0) 
+
+# 6.578571 Average Failure Time
+avg_fail_flood_age_motor <- mean(motor_reason$age)
+```
+
+```{r Surge Survived Surge}
+# Subsetting Flood
+surge_reason <- hurricane[ which(hurricane$reason == 3),]
+
+# Percent Surived
+# 111 0s (Not Survived)
+no_survived_surge <- sum(surge_reason$survive == 0) 
+
+# 8.421622 Average Failure Time
+avg_fail_flood_age_surge <- mean(surge_reason$age)
+```
+
+
+```{r Jammed Survived Jammed}
+# Subsetting Jammed
+jammed_reason <- hurricane[ which(hurricane$reason == 4),]
+
+# Percent Surived
+# 116 0s (Not Survived)
+no_survived_jammed <- sum(jammed_reason$survive == 0) 
+
+# 6.386207 Average Failure Time
+avg_fail_flood_age_jammed <- mean(jammed_reason$age)
+```
+
+
+```{r Comparing Means}
+
+# Boxplot of MPG by Car Cylinders 
+boxplot(hour~reason,data=hurricane, main="Pump Reason Lifespan", 
+   xlab="Reason", ylab="Age")
+
+
+t.test(age ~ reason, data = hurricane, paired = TRUE)
+fit <- aov(hour~as.factor(reason), hurricane)
+summary(fit)
+TukeyHSD(fit)
+
+### Pairwise median tests
+
+library(car)
+leveneTest(hurricane$hour, as.factor(hurricane$reason))
+stats::p.adjust
+```
+
+There are two big drops at hour 25 and hour 40  
+```{r}
+# Survival Function #
+pump_surv <- Surv(time = hurricane$hour, event = hurricane$survive == 0)
+
+pump_km <- survfit(pump_surv ~ 1, data = hurricane)
+summary(pump_km)
+plot(pump_km, main = "Survival Function", xlab = "Age", ylab = "Survival Probability")
+
+ggsurvplot(pump_km, data = hurricane, conf.int = FALSE, palette = "purple",
+           xlab = "Hour", ylab = "Survival Probability", legend = "none",
+           break.y.by = 0.1)
+
+
+
+```
+
+
+```{r Stratified Analysis}
+# Stratified Analysis #
+survdiff(pump_surv ~ survive, rho = 0, data = hurricane)
+
+pump_strat <- survfit(pump_surv ~ reason, data = hurricane)
+summary(pump_strat)
+ggsurvplot(pump_strat, data = hurricane, 
+           xlab = "Age", ylab = "Survival Probability", break.y.by = 0.1,
+           legend.title = "Reason", legend.labs = c("0", "1", "2", "3", "4"))
+
+pairwise_survdiff(Surv(hour, survive == 0) ~ reason, rho = 0, data = hurricane)
+```
+
+```{r}
+survdiff(pump_surv ~ survive, rho = 0, data = hurricane)
+
+pump_strat <- survfit(pump_surv ~ backup, data = hurricane)
+summary(pump_strat)
+l <- c("backup", "bridgecrane", "elevation", "gear", "servo", "slope", "trashrack")
+
+for( i in l ){
+  pump_strat <- survfit(pump_surv ~ as.function(i), data = hurricane)
+  print(ggsurvplot(pump_strat, data = hurricane, 
+           xlab = "Age", ylab = "Survival Probability", break.y.by = 0.1,
+           legend.title = "Reason"))
+}
+pump_strat <- survfit(pump_surv ~ i, data = hurricane)
+  print(ggsurvplot(pump_strat, data = hurricane, 
+           xlab = "Age", ylab = "Survival Probability", break.y.by = 0.1,
+           legend.title = "Reason"))
+  
+```  
+  
+```{r}
+## Import library for allowing multiple subplots
+library(gridExtra)
+
+## Set subplot size
+options(repr.plot.width=15, repr.plot.height=30)
+library(dplyr)
+## Drop columns containing continuous variables and the event variable "Churn"
+subset_df <- select(hurricane, backup, bridgecrane, elevation, gear, servo, slope, trashrack)
+
+## For loop to create list of KM curve graph objects, one for each categorical variable
+f <- 1
+
+plot_list <- list()
+
+for (i in colnames(subset_df)){
+    x <- survfit(Surv(hour, survive == 0) ~ get(i), data=hurricane)
+    
+    y <- ggsurvplot(x, 
+                    conf.int = FALSE,
+                    pval = TRUE, 
+                    ggtheme = theme_bw(),  
+                    font.main = c(18, "bold"),
+                    font.x = c(10, "bold"), 
+                    font.y = c(10, "bold"),
+                    font.legend = c(10, "bold"),
+                    ) + ggtitle(i)  
+    
+    plot_list[[i]] <- y
+    
+    f <- f + 1
+}
+
+## Create subplots
+arrange_ggsurvplots(plot_list)
+```
+
+```{r}
+# Hazard Function - Recidivism Data Set #
+pump_strat$hp <- pump_strat$n.event/pump_strat$n.risk
+pump_haz <- merge(data.frame(time = seq(1,52,1)), data.frame(time = pump_strat$time, hp = pump_strat$hp), by = "time", all = TRUE)
+pump_haz[is.na(pump_haz) == TRUE] <- 0
+
+plot(y = pump_haz$hp, x = pump_haz$time, main = "Hazard Probability Function", xlab = "Tenure", ylab = "Hazard Probability",
+     type = 'l')
+
+ggsurvplot(pump_km, data = hurricane, fun = "cumhaz", conf.int = TRUE, palette = "purple",
+           xlab = "Week", ylab = "Cumulative Hazard", legend = "none")
+```
+
