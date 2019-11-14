@@ -25,7 +25,7 @@ library(dplyr)
 ```{r Data, echo=FALSE}
 hurricane <- haven::read_sas("/Users/thomasgow/Documents/IAA/Survival Analysis/SA Data/hurricane.sas7bdat")
 
-small <- select(hurricane, age, reason, hour, survive)
+small <- dplyr::select(hurricane, age, reason, hour, survive)
 ```
 
 ```{r Pumps Survived}
@@ -100,7 +100,6 @@ boxplot(hour~reason,data=hurricane, main="Pump Reason Lifespan",
    xlab="Reason", ylab="Age")
 
 
-t.test(age ~ reason, data = hurricane, paired = TRUE)
 fit <- aov(hour~as.factor(reason), hurricane)
 summary(fit)
 TukeyHSD(fit)
@@ -143,35 +142,16 @@ ggsurvplot(pump_strat, data = hurricane,
 pairwise_survdiff(Surv(hour, survive == 0) ~ reason, rho = 0, data = hurricane)
 ```
 
-```{r}
-survdiff(pump_surv ~ survive, rho = 0, data = hurricane)
 
-pump_strat <- survfit(pump_surv ~ backup, data = hurricane)
-summary(pump_strat)
-l <- c("backup", "bridgecrane", "elevation", "gear", "servo", "slope", "trashrack")
-
-for( i in l ){
-  pump_strat <- survfit(pump_surv ~ as.function(i), data = hurricane)
-  print(ggsurvplot(pump_strat, data = hurricane, 
-           xlab = "Age", ylab = "Survival Probability", break.y.by = 0.1,
-           legend.title = "Reason"))
-}
-pump_strat <- survfit(pump_surv ~ i, data = hurricane)
-  print(ggsurvplot(pump_strat, data = hurricane, 
-           xlab = "Age", ylab = "Survival Probability", break.y.by = 0.1,
-           legend.title = "Reason"))
-  
-```  
   
 ```{r}
 ## Import library for allowing multiple subplots
 library(gridExtra)
 
-## Set subplot size
-options(repr.plot.width=15, repr.plot.height=30)
+
 library(dplyr)
 ## Drop columns containing continuous variables and the event variable "Churn"
-subset_df <- select(hurricane, backup, bridgecrane, elevation, gear, servo, slope, trashrack)
+subset_df <- dplyr::select(hurricane, backup, bridgecrane, elevation, gear, servo, slope, trashrack)
 
 ## For loop to create list of KM curve graph objects, one for each categorical variable
 f <- 1
